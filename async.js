@@ -1,16 +1,23 @@
 const fs = require("fs");
 const { parseCSVLine } = require("./utils/csv");
+const { performance } = require("perf_hooks");
 
-fs.readFile("./data/customers-100.csv", "utf-8", (error, data) => {
-  fs.appendFile(
-    "./output/data.json",
-    "[\n",
-    "utf-8",
-    (error) => error && console.log("start", error),
-  );
+fs.readFile("./data/customers-2000000.csv", "utf-8", (error, data) => {
+  if (error) {
+    return console.log(error);
+  }
+  convertIntoJson(data, "./output/sample.json");
+});
+
+function convertIntoJson(data, targetPath, callback) {
+  const writestream = fs.createWriteStream(targetPath, "utf-8");
+
   const lines = data.split("\r\n");
   const header = lines[0].split(",");
-  data.split("\r\n").forEach((ele, index) => {
+
+  writestream.write("[\n");
+
+  lines.forEach((ele, index) => {
     if (index === 0) return;
 
     const parseRow = parseCSVLine(ele);
@@ -21,23 +28,17 @@ fs.readFile("./data/customers-100.csv", "utf-8", (error, data) => {
     });
 
     const formatData =
-      index < data.split("\r\n").length - 1
+      index < lines.length - 1
         ? JSON.stringify(row, null, 2) + ","
         : JSON.stringify(row, null, 2);
 
-    // console.log(formatData);
-    fs.appendFile(
-      "./output/data.json",
-      formatData,
-      "utf-8",
-      (error) => error && console.log("mid", error),
-    );
+    writestream.write(formatData);
   });
 
-  fs.appendFile(
-    "./output/data.json",
-    "\n]",
-    "utf-8",
-    (error) => error && console.log("end", error),
-  );
-});
+  writestream.write("\n]");
+  writestream.end(() => {
+    callback?.();
+  });
+}
+
+module.exports = { convertIntoJson };
